@@ -2,21 +2,27 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const ws_1 = require("ws");
 const wss = new ws_1.WebSocketServer({ port: 8000 });
-let userCount = 0;
 let allSockets = [];
 wss.on("connection", (socket) => {
-    console.log("We are live at port 8000");
-    allSockets.push(socket);
-    userCount += 1;
-    console.log(`User connect ${userCount}`);
     socket.on("message", (message) => {
-        console.log(`Message recieved from ${userCount} is \"${message.toString()}\"`);
-        for (let i = 0; i < allSockets.length; i++) {
-            allSockets[i].send(`User ${i + 1}: ${message.toString()}`);
+        var _a;
+        console.log(`Message recieved  is \"${message.toString()}\"`);
+        //@ts-ignore
+        const parsedMessage = JSON.parse(message);
+        console.log(parsedMessage);
+        if (parsedMessage.type === "join") {
+            console.log("user joined a room");
+            allSockets.push({ socket, room: parsedMessage.payload.roomId });
         }
-    });
-    socket.on("close", () => {
-        userCount -= 1;
-        console.log(`User disconnect ${userCount}`);
+        if (parsedMessage.type === "chat") {
+            console.log("user sent a message");
+            const currentUserRoom = (_a = allSockets.find(x => x.socket === socket)) === null || _a === void 0 ? void 0 : _a.room;
+            if (currentUserRoom) {
+                allSockets.filter(x => x.room === currentUserRoom).forEach(x => x.socket.send(parsedMessage.payload.message));
+            }
+            else {
+                socket.send("You are not in any room");
+            }
+        }
     });
 });
